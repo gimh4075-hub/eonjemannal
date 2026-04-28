@@ -2,25 +2,24 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { nanoid } from 'nanoid'
 import { getDb, toStr, toNum } from '../../_lib/db'
 
+// GET + POST /api/events/:eventId/availability
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const eventId = req.query.eventId as string
-
-  if (req.method === 'GET') return handleGet(req, res, eventId)
+  if (req.method === 'GET') return handleGet(res, eventId)
   if (req.method === 'POST') return handlePost(req, res, eventId)
   return res.status(405).json({ error: 'Method not allowed' })
 }
 
-// ─── GET: full availability matrix + overlap computation ─────────────────────
-
-async function handleGet(_req: VercelRequest, res: VercelResponse, eventId: string) {
+// ─── GET ─────────────────────────────────────────────────────────────────────
+async function handleGet(res: VercelResponse, eventId: string) {
   try {
-    const db = getDb()
+    const db = await getDb()
 
-    const eventResult = await db.execute({
-      sql: 'SELECT date_range_start, date_range_end FROM events WHERE id = ?',
+    const eventCheck = await db.execute({
+      sql: 'SELECT id FROM events WHERE id = ?',
       args: [eventId],
     })
-    if (eventResult.rows.length === 0) {
+    if (eventCheck.rows.length === 0) {
       return res.status(404).json({ error: '이벤트를 찾을 수 없습니다.' })
     }
 
@@ -43,9 +42,7 @@ async function handleGet(_req: VercelRequest, res: VercelResponse, eventId: stri
     }))
 
     const allAvail = availResult.rows.map(r => ({
-      id: toStr(r.id),
       participant_id: toStr(r.participant_id),
-      event_id: toStr(r.event_id),
       date: toStr(r.date),
     }))
 
@@ -57,7 +54,7 @@ async function handleGet(_req: VercelRequest, res: VercelResponse, eventId: stri
         .map(a => a.date)
     }
 
-    // date → participantIds[]
+    // date → [participantId, ...]
     const dateMap: Record<string, string[]> = {}
     for (const a of allAvail) {
       if (!dateMap[a.date]) dateMap[a.date] = []
@@ -73,19 +70,18 @@ async function handleGet(_req: VercelRequest, res: VercelResponse, eventId: stri
           const p = participants.find(x => x.id === pid)
           return p ? p.name : pid
         }),
-        isPerfectMatch: pIds.length === totalParticipants && totalParticipants > 0,
+        isPerfectMatch: totalParticipants > 0 && pIds.length === totalParticipants,
       }))
       .sort((a, b) => b.count - a.count)
 
     return res.json({ participants, availability, overlaps, totalParticipants })
   } catch (err) {
-    console.error(err)
+    console.error('[GET /api/events/:eventId/availability]', err)
     return res.status(500).json({ error: '가용 날짜 조회 중 오류가 발생했습니다.' })
   }
 }
 
-// ─── POST: submit (replace) availability for one participant ─────────────────
-
+// ─── POST ────────────────────────────────────────────────────────────────────
 async function handlePost(req: VercelRequest, res: VercelResponse, eventId: string) {
   const { participantId, dates } = req.body ?? {}
 
@@ -94,7 +90,7 @@ async function handlePost(req: VercelRequest, res: VercelResponse, eventId: stri
   }
 
   try {
-    const db = getDb()
+    const db = await getDb()
 
     const pCheck = await db.execute({
       sql: 'SELECT id FROM participants WHERE id = ? AND event_id = ?',
@@ -104,23 +100,25 @@ async function handlePost(req: VercelRequest, res: VercelResponse, eventId: stri
       return res.status(404).json({ error: '참여자를 찾을 수 없습니다.' })
     }
 
-    // Delete existing then insert new — batch for atomicity
     const inserts = (dates as string[]).map(date => ({
       sql: 'INSERT INTO availability (id, participant_id, event_id, date) VALUES (?, ?, ?, ?)',
       args: [nanoid(12), participantId, eventId, date],
     }))
 
-    await db.batch([
-      {
-        sql: 'DELETE FROM availability WHERE participant_id = ? AND event_id = ?',
-        args: [participantId, eventId],
-      },
-      ...inserts,
-    ])
+    await db.batch(
+      [
+        {
+          sql: 'DELETE FROM availability WHERE participant_id = ? AND event_id = ?',
+          args: [participantId, eventId],
+        },
+        ...inserts,
+      ],
+      'write'
+    )
 
     return res.json({ success: true })
   } catch (err) {
-    console.error(err)
+    console.error('[POST /api/events/:eventId/availability]', err)
     return res.status(500).json({ error: '가용 날짜 저장 중 오류가 발생했습니다.' })
   }
 }

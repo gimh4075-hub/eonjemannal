@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { nanoid } from 'nanoid'
-import { getDb, toStr } from '../../_lib/db'
+import { getDb } from '../../_lib/db'
 
+// POST /api/events/:eventId/join
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -15,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const db = getDb()
+    const db = await getDb()
 
     const eventCheck = await db.execute({
       sql: 'SELECT id FROM events WHERE id = ?',
@@ -33,9 +34,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       args: [participantId, eventId, trimmedName, Date.now()],
     })
 
-    return res.json({ participantId, name: trimmedName })
+    return res.status(201).json({ participantId, name: trimmedName })
   } catch (err) {
-    console.error(err)
+    console.error('[POST /api/events/:eventId/join]', err)
     return res.status(500).json({ error: '참여 중 오류가 발생했습니다.' })
   }
 }

@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { nanoid } from 'nanoid'
 import { getDb } from '../_lib/db'
 
+// POST /api/events
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -21,30 +22,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: '종료일은 시작일 이후여야 합니다.' })
   }
   if (diffDays > 60) {
-    return res.status(400).json({ error: '날짜 범위는 최대 60일까지 선택할 수 있습니다.' })
+    return res.status(400).json({ error: '날짜 범위는 최대 60일까지 설정할 수 있습니다.' })
   }
 
   try {
-    const db = getDb()
+    const db = await getDb()
     const eventId = nanoid(8)
     const participantId = nanoid(12)
     const now = Date.now()
 
-    await db.batch([
-      {
-        sql: `INSERT INTO events (id, title, description, host_name, date_range_start, date_range_end, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        args: [eventId, title, description ?? null, hostName, dateRangeStart, dateRangeEnd, now],
-      },
-      {
-        sql: `INSERT INTO participants (id, event_id, name, joined_at) VALUES (?, ?, ?, ?)`,
-        args: [participantId, eventId, hostName, now],
-      },
-    ])
+    await db.batch(
+      [
+        {
+          sql: `INSERT INTO events (id, title, description, host_name, date_range_start, date_range_end, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          args: [eventId, title, description ?? null, hostName, dateRangeStart, dateRangeEnd, now],
+        },
+        {
+          sql: `INSERT INTO participants (id, event_id, name, joined_at) VALUES (?, ?, ?, ?)`,
+          args: [participantId, eventId, hostName, now],
+        },
+      ],
+      'write'
+    )
 
-    return res.json({ eventId, participantId, shareUrl: `/event/${eventId}` })
+    return res.status(201).json({ eventId, participantId, shareUrl: `/event/${eventId}` })
   } catch (err) {
-    console.error(err)
+    console.error('[POST /api/events]', err)
     return res.status(500).json({ error: '이벤트 생성 중 오류가 발생했습니다.' })
   }
 }
