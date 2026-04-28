@@ -4,18 +4,24 @@ import { getDb } from '../../_lib/db'
 
 // POST /api/events/:eventId/join
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  if (req.method === 'OPTIONS') return res.status(200).end()
 
   const eventId = req.query.eventId as string
-  const { name } = req.body ?? {}
+  console.log(`[POST /api/events/${eventId}/join] method=${req.method}`)
 
-  if (!name || !String(name).trim()) {
-    return res.status(400).json({ error: '이름을 입력해주세요.' })
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
+    const { name } = req.body ?? {}
+    console.log(`[POST /api/events/${eventId}/join] name=${name}`)
+
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: '이름을 입력해주세요.' })
+    }
+
     const db = await getDb()
 
     const eventCheck = await db.execute({
@@ -34,9 +40,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       args: [participantId, eventId, trimmedName, Date.now()],
     })
 
+    console.log(`[POST /api/events/${eventId}/join] success participantId=${participantId}`)
     return res.status(201).json({ participantId, name: trimmedName })
+
   } catch (err) {
-    console.error('[POST /api/events/:eventId/join]', err)
-    return res.status(500).json({ error: '참여 중 오류가 발생했습니다.' })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[POST /api/events/${eventId}/join] ERROR:`, message)
+    return res.status(500).json({ error: '참여 중 오류가 발생했습니다.', detail: message })
   }
 }
