@@ -1,18 +1,18 @@
 export interface Event {
   id: string;
   title: string;
-  description: string | null;
-  host_name: string;
-  date_range_start: string;
-  date_range_end: string;
-  created_at: number;
+  description: string;
+  hostName: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  createdAt: number;
 }
 
 export interface Participant {
   id: string;
-  event_id: string;
+  eventId: string;
   name: string;
-  joined_at: number;
+  joinedAt: number;
 }
 
 export interface DateOverlap {

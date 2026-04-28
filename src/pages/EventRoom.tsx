@@ -203,9 +203,9 @@ export default function EventRoom() {
           <div className="min-w-0">
             <h1 className="text-base font-bold text-slate-800 truncate">{event.title}</h1>
             <p className="text-xs text-slate-400">
-              {format(parseISO(event.date_range_start), 'M월 d일', { locale: ko })} ~{' '}
-              {format(parseISO(event.date_range_end), 'M월 d일', { locale: ko })}
-              &nbsp;·&nbsp;주최자: {event.host_name}
+              {format(parseISO(event.dateRangeStart), 'M월 d일', { locale: ko })} ~{' '}
+              {format(parseISO(event.dateRangeEnd), 'M월 d일', { locale: ko })}
+              &nbsp;·&nbsp;주최자: {event.hostName}
             </p>
           </div>
           <button
@@ -227,8 +227,8 @@ export default function EventRoom() {
           )}
 
           <Calendar
-            rangeStart={event.date_range_start}
-            rangeEnd={event.date_range_end}
+            rangeStart={event.dateRangeStart}
+            rangeEnd={event.dateRangeEnd}
             selectedDates={selectedDates}
             onToggleDate={toggleDate}
             overlaps={availabilityResult?.overlaps}
@@ -267,8 +267,8 @@ export default function EventRoom() {
           {availabilityResult && (
             <AvailabilityGrid
               result={availabilityResult}
-              rangeStart={event.date_range_start}
-              rangeEnd={event.date_range_end}
+              rangeStart={event.dateRangeStart}
+              rangeEnd={event.dateRangeEnd}
             />
           )}
         </div>

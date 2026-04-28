@@ -43,7 +43,7 @@ export function useEvent(eventId: string | undefined) {
   const fetchEvent = useCallback(async () => {
     if (!eventId) return
     try {
-      const res = await fetch(`/api/events/${eventId}`)
+      const res = await fetch(`/api/events?id=${eventId}`)
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error || '이벤트를 불러오는데 실패했습니다.')
@@ -59,7 +59,7 @@ export function useEvent(eventId: string | undefined) {
   const fetchAvailability = useCallback(async () => {
     if (!eventId) return
     try {
-      const res = await fetch(`/api/events/${eventId}/availability`)
+      const res = await fetch(`/api/availability?eventId=${eventId}`)
       if (!res.ok) return
       const data = await res.json()
       setAvailabilityResult(data)
@@ -71,7 +71,7 @@ export function useEvent(eventId: string | undefined) {
   const fetchVotes = useCallback(async () => {
     if (!eventId) return
     try {
-      const res = await fetch(`/api/events/${eventId}/votes`)
+      const res = await fetch(`/api/votes?eventId=${eventId}`)
       if (!res.ok) return
       const data = await res.json()
       setVotesResult(data)
@@ -91,10 +91,10 @@ export function useEvent(eventId: string | undefined) {
   const joinEvent = useCallback(
     async (name: string): Promise<LocalParticipantInfo | null> => {
       if (!eventId) return null
-      const res = await fetch(`/api/events/${eventId}/join`, {
+      const res = await fetch('/api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ eventId, name }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -114,10 +114,10 @@ export function useEvent(eventId: string | undefined) {
   const submitAvailability = useCallback(
     async (dates: string[]) => {
       if (!eventId || !localParticipant) throw new Error('참여자 정보가 없습니다.')
-      const res = await fetch(`/api/events/${eventId}/availability`, {
+      const res = await fetch('/api/availability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: localParticipant.participantId, dates }),
+        body: JSON.stringify({ eventId, participantId: localParticipant.participantId, dates }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -131,10 +131,10 @@ export function useEvent(eventId: string | undefined) {
   const castVote = useCallback(
     async (date: string) => {
       if (!eventId || !localParticipant) throw new Error('참여자 정보가 없습니다.')
-      const res = await fetch(`/api/events/${eventId}/vote`, {
+      const res = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: localParticipant.participantId, date }),
+        body: JSON.stringify({ eventId, participantId: localParticipant.participantId, date }),
       })
       if (!res.ok) {
         const data = await res.json()

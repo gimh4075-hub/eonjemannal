@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays } from 'date-fns'
 
+const STORAGE_KEY = 'eonjemannal_participants'
+
 function storeParticipant(eventId: string, info: { participantId: string; name: string }) {
   try {
-    const raw = localStorage.getItem('eonjemannal_participants')
+    const raw = localStorage.getItem(STORAGE_KEY)
     const map = raw ? JSON.parse(raw) : {}
     map[eventId] = info
-    localStorage.setItem('eonjemannal_participants', JSON.stringify(map))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
   } catch {
     // ignore
   }
@@ -55,16 +57,27 @@ export default function CreateEvent() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/events', {
+      // 1. 이벤트 생성
+      const evRes = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, hostName, dateRangeStart, dateRangeEnd }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || '이벤트 생성에 실패했습니다.')
+      const evData = await evRes.json()
+      if (!evRes.ok) throw new Error(evData.error || '이벤트 생성에 실패했습니다.')
 
-      const { eventId, participantId } = data
-      storeParticipant(eventId, { participantId, name: hostName })
+      const eventId: string = evData.id
+
+      // 2. 주최자를 참여자로 등록
+      const joinRes = await fetch('/api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, name: hostName }),
+      })
+      const joinData = await joinRes.json()
+      if (!joinRes.ok) throw new Error(joinData.error || '참여 등록에 실패했습니다.')
+
+      storeParticipant(eventId, { participantId: joinData.participantId, name: joinData.name })
 
       const link = `${window.location.origin}/event/${eventId}`
       setCreatedLink(link)
