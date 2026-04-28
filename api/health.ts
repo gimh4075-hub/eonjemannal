@@ -1,4 +1,4 @@
-import { getDb } from './_lib/db'
+import { execute, getDb } from './_lib/db'
 
 export default async function handler(_req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -13,10 +13,10 @@ export default async function handler(_req: any, res: any) {
   }
 
   try {
-    const db = await getDb()
-    checks.db_client = '✅ created'
+    await getDb()
+    checks.db_connected = '✅ ok'
     for (const t of ['events', 'participants', 'availability', 'votes']) {
-      const r = await db.execute({ sql: `SELECT COUNT(*) AS n FROM ${t}`, args: [] })
+      const r = await execute(`SELECT COUNT(*) AS n FROM ${t}`)
       checks[`table_${t}`] = `✅ ${r.rows[0].n} rows`
     }
     return res.status(200).json({ status: 'ok', checks })

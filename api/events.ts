@@ -1,5 +1,4 @@
-import { nanoid } from 'nanoid'
-import { getDb, toStr, toNum } from './_lib/db'
+import { getDb, toStr, toNum, nanoid } from './_lib/db'
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -8,18 +7,18 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') return res.status(200).end()
 
   try {
-    const db = await getDb()
+    const { execute } = await getDb()
 
     if (req.method === 'POST') {
       const { title, description, hostName, dateRangeStart, dateRangeEnd } = req.body ?? {}
       if (!title || !hostName || !dateRangeStart || !dateRangeEnd)
         return res.status(400).json({ error: 'title, hostName, dateRangeStart, dateRangeEnd 가 필요합니다.' })
 
-      const id = nanoid(12)
-      await db.execute({
-        sql: 'INSERT INTO events (id, title, description, host_name, date_range_start, date_range_end, created_at) VALUES (?,?,?,?,?,?,?)',
-        args: [id, title, description ?? null, hostName, dateRangeStart, dateRangeEnd, Date.now()],
-      })
+      const id = nanoid()
+      await execute(
+        'INSERT INTO events (id, title, description, host_name, date_range_start, date_range_end, created_at) VALUES (?,?,?,?,?,?,?)',
+        [id, title, description ?? null, hostName, dateRangeStart, dateRangeEnd, Date.now()]
+      )
       return res.status(201).json({ id, title, hostName, dateRangeStart, dateRangeEnd })
     }
 
@@ -28,8 +27,8 @@ export default async function handler(req: any, res: any) {
       if (!id) return res.status(400).json({ error: 'id 쿼리 파라미터가 필요합니다.' })
 
       const [evRes, pRes] = await Promise.all([
-        db.execute({ sql: 'SELECT * FROM events WHERE id=?', args: [id] }),
-        db.execute({ sql: 'SELECT * FROM participants WHERE event_id=? ORDER BY joined_at ASC', args: [id] }),
+        execute('SELECT * FROM events WHERE id=?', [id]),
+        execute('SELECT * FROM participants WHERE event_id=? ORDER BY joined_at ASC', [id]),
       ])
       if (evRes.rows.length === 0) return res.status(404).json({ error: '이벤트를 찾을 수 없습니다.' })
 

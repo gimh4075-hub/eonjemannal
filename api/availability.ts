@@ -1,5 +1,4 @@
-import { nanoid } from 'nanoid'
-import { getDb, toStr, toNum } from './_lib/db'
+import { getDb, toStr, toNum, nanoid } from './_lib/db'
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -8,18 +7,18 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') return res.status(200).end()
 
   try {
-    const db = await getDb()
+    const { execute } = await getDb()
 
     if (req.method === 'GET') {
       const eventId = req.query?.eventId
       if (!eventId) return res.status(400).json({ error: 'eventId 가 필요합니다.' })
 
-      const ev = await db.execute({ sql: 'SELECT id FROM events WHERE id=?', args: [eventId] })
+      const ev = await execute('SELECT id FROM events WHERE id=?', [eventId])
       if (ev.rows.length === 0) return res.status(404).json({ error: '이벤트를 찾을 수 없습니다.' })
 
       const [pRes, aRes] = await Promise.all([
-        db.execute({ sql: 'SELECT * FROM participants WHERE event_id=? ORDER BY joined_at ASC', args: [eventId] }),
-        db.execute({ sql: 'SELECT * FROM availability WHERE event_id=?', args: [eventId] }),
+        execute('SELECT * FROM participants WHERE event_id=? ORDER BY joined_at ASC', [eventId]),
+        execute('SELECT * FROM availability WHERE event_id=?', [eventId]),
       ])
 
       const participants = pRes.rows.map(r => ({
@@ -54,14 +53,12 @@ export default async function handler(req: any, res: any) {
       if (!eventId || !participantId || !Array.isArray(dates))
         return res.status(400).json({ error: 'eventId, participantId, dates[] 가 필요합니다.' })
 
-      const pCheck = await db.execute({
-        sql: 'SELECT id FROM participants WHERE id=? AND event_id=?', args: [participantId, eventId],
-      })
+      const pCheck = await execute('SELECT id FROM participants WHERE id=? AND event_id=?', [participantId, eventId])
       if (pCheck.rows.length === 0) return res.status(404).json({ error: '참여자를 찾을 수 없습니다.' })
 
-      await db.execute({ sql: 'DELETE FROM availability WHERE participant_id=? AND event_id=?', args: [participantId, eventId] })
+      await execute('DELETE FROM availability WHERE participant_id=? AND event_id=?', [participantId, eventId])
       for (const date of dates as string[])
-        await db.execute({ sql: 'INSERT INTO availability (id, participant_id, event_id, date) VALUES (?,?,?,?)', args: [nanoid(12), participantId, eventId, date] })
+        await execute('INSERT INTO availability (id, participant_id, event_id, date) VALUES (?,?,?,?)', [nanoid(), participantId, eventId, date])
 
       return res.json({ success: true })
     }

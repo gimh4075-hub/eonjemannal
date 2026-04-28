@@ -1,5 +1,4 @@
-import { nanoid } from 'nanoid'
-import { getDb, toStr } from './_lib/db'
+import { getDb, toStr, nanoid } from './_lib/db'
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -8,15 +7,15 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') return res.status(200).end()
 
   try {
-    const db = await getDb()
+    const { execute } = await getDb()
 
     if (req.method === 'GET') {
       const eventId = req.query?.eventId
       if (!eventId) return res.status(400).json({ error: 'eventId 가 필요합니다.' })
 
       const [vRes, pRes] = await Promise.all([
-        db.execute({ sql: 'SELECT * FROM votes WHERE event_id=?', args: [eventId] }),
-        db.execute({ sql: 'SELECT id, name FROM participants WHERE event_id=?', args: [eventId] }),
+        execute('SELECT * FROM votes WHERE event_id=?', [eventId]),
+        execute('SELECT id, name FROM participants WHERE event_id=?', [eventId]),
       ])
 
       const participants = pRes.rows.map(r => ({ id: toStr(r.id), name: toStr(r.name) }))
@@ -40,13 +39,11 @@ export default async function handler(req: any, res: any) {
       if (!eventId || !participantId || !date)
         return res.status(400).json({ error: 'eventId, participantId, date 가 필요합니다.' })
 
-      const pCheck = await db.execute({
-        sql: 'SELECT id FROM participants WHERE id=? AND event_id=?', args: [participantId, eventId],
-      })
+      const pCheck = await execute('SELECT id FROM participants WHERE id=? AND event_id=?', [participantId, eventId])
       if (pCheck.rows.length === 0) return res.status(404).json({ error: '참여자를 찾을 수 없습니다.' })
 
-      await db.execute({ sql: 'DELETE FROM votes WHERE event_id=? AND participant_id=?', args: [eventId, participantId] })
-      await db.execute({ sql: 'INSERT INTO votes (id, event_id, participant_id, date) VALUES (?,?,?,?)', args: [nanoid(12), eventId, participantId, date] })
+      await execute('DELETE FROM votes WHERE event_id=? AND participant_id=?', [eventId, participantId])
+      await execute('INSERT INTO votes (id, event_id, participant_id, date) VALUES (?,?,?,?)', [nanoid(), eventId, participantId, date])
 
       return res.json({ success: true })
     }
