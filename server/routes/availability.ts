@@ -1,197 +1,227 @@
-import { Router, Request, Response } from 'express';
-import { nanoid } from 'nanoid';
-import db from '../db';
-import { Participant, Availability, Vote } from '../types';
+import { Router, Request, Response } from 'express'
+import { nanoid } from 'nanoid'
+import { db } from '../db'
 
-const router = Router();
+const router = Router()
 
-// POST /api/events/:eventId/join — Join as participant
-router.post('/:eventId/join', (req: Request, res: Response) => {
+// POST /api/events/:eventId/join
+router.post('/:eventId/join', async (req: Request, res: Response) => {
   try {
-    const { eventId } = req.params;
-    const { name } = req.body;
+    const { eventId } = req.params
+    const { name } = req.body
 
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: '이름을 입력해주세요.' });
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: '이름을 입력해주세요.' })
     }
 
-    const event = db.prepare('SELECT id FROM events WHERE id = ?').get(eventId);
-    if (!event) {
-      return res.status(404).json({ error: '이벤트를 찾을 수 없습니다.' });
+    const eventCheck = await db.execute({
+      sql: 'SELECT id FROM events WHERE id = ?',
+      args: [eventId],
+    })
+    if (eventCheck.rows.length === 0) {
+      return res.status(404).json({ error: '이벤트를 찾을 수 없습니다.' })
     }
 
-    const participantId = nanoid(12);
-    db.prepare(`
-      INSERT INTO participants (id, event_id, name, joined_at)
-      VALUES (?, ?, ?, ?)
-    `).run(participantId, eventId, name.trim(), Date.now());
+    const participantId = nanoid(12)
+    const trimmedName = String(name).trim()
 
-    return res.json({ participantId, name: name.trim() });
+    await db.execute({
+      sql: 'INSERT INTO participants (id, event_id, name, joined_at) VALUES (?, ?, ?, ?)',
+      args: [participantId, eventId, trimmedName, Date.now()],
+    })
+
+    return res.status(201).json({ participantId, name: trimmedName })
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: '참여 중 오류가 발생했습니다.' });
+    console.error('[POST /api/events/:eventId/join]', err)
+    return res.status(500).json({ error: '참여 중 오류가 발생했습니다.' })
   }
-});
+})
 
-// POST /api/events/:eventId/availability — Submit available dates
-router.post('/:eventId/availability', (req: Request, res: Response) => {
+// POST /api/events/:eventId/availability
+router.post('/:eventId/availability', async (req: Request, res: Response) => {
   try {
-    const { eventId } = req.params;
-    const { participantId, dates } = req.body;
+    const { eventId } = req.params
+    const { participantId, dates } = req.body
 
     if (!participantId || !Array.isArray(dates)) {
-      return res.status(400).json({ error: '잘못된 요청입니다.' });
+      return res.status(400).json({ error: '잘못된 요청입니다.' })
     }
 
-    const participant = db.prepare(
-      'SELECT id FROM participants WHERE id = ? AND event_id = ?'
-    ).get(participantId, eventId);
-    if (!participant) {
-      return res.status(404).json({ error: '참여자를 찾을 수 없습니다.' });
+    const pCheck = await db.execute({
+      sql: 'SELECT id FROM participants WHERE id = ? AND event_id = ?',
+      args: [participantId, eventId],
+    })
+    if (pCheck.rows.length === 0) {
+      return res.status(404).json({ error: '참여자를 찾을 수 없습니다.' })
     }
 
-    // Delete existing availability for this participant then re-insert
-    db.prepare('DELETE FROM availability WHERE participant_id = ? AND event_id = ?')
-      .run(participantId, eventId);
+    const inserts = (dates as string[]).map(date => ({
+      sql: 'INSERT INTO availability (id, participant_id, event_id, date) VALUES (?, ?, ?, ?)',
+      args: [nanoid(12), participantId, eventId, date],
+    }))
 
-    const insert = db.prepare(`
-      INSERT INTO availability (id, participant_id, event_id, date)
-      VALUES (?, ?, ?, ?)
-    `);
+    await db.batch(
+      [
+        {
+          sql: 'DELETE FROM availability WHERE participant_id = ? AND event_id = ?',
+          args: [participantId, eventId],
+        },
+        ...inserts,
+      ],
+      'write'
+    )
 
-    const insertMany = db.transaction((dateList: string[]) => {
-      for (const date of dateList) {
-        insert.run(nanoid(12), participantId, eventId, date);
-      }
-    });
-    insertMany(dates);
-
-    return res.json({ success: true });
+    return res.json({ success: true })
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: '가용 날짜 저장 중 오류가 발생했습니다.' });
+    console.error('[POST /api/events/:eventId/availability]', err)
+    return res.status(500).json({ error: '가용 날짜 저장 중 오류가 발생했습니다.' })
   }
-});
+})
 
-// GET /api/events/:eventId/availability — Get all availability + overlaps
-router.get('/:eventId/availability', (req: Request, res: Response) => {
+// GET /api/events/:eventId/availability
+router.get('/:eventId/availability', async (req: Request, res: Response) => {
   try {
-    const { eventId } = req.params;
+    const { eventId } = req.params
 
-    const event = db.prepare(
-      'SELECT date_range_start, date_range_end FROM events WHERE id = ?'
-    ).get(eventId) as { date_range_start: string; date_range_end: string } | undefined;
-
-    if (!event) {
-      return res.status(404).json({ error: '이벤트를 찾을 수 없습니다.' });
+    const eventCheck = await db.execute({
+      sql: 'SELECT id FROM events WHERE id = ?',
+      args: [eventId],
+    })
+    if (eventCheck.rows.length === 0) {
+      return res.status(404).json({ error: '이벤트를 찾을 수 없습니다.' })
     }
 
-    const participants = db.prepare(
-      'SELECT * FROM participants WHERE event_id = ? ORDER BY joined_at ASC'
-    ).all(eventId) as Participant[];
+    const [participantsResult, availResult] = await Promise.all([
+      db.execute({
+        sql: 'SELECT * FROM participants WHERE event_id = ? ORDER BY joined_at ASC',
+        args: [eventId],
+      }),
+      db.execute({
+        sql: 'SELECT * FROM availability WHERE event_id = ?',
+        args: [eventId],
+      }),
+    ])
 
-    const allAvailability = db.prepare(
-      'SELECT * FROM availability WHERE event_id = ?'
-    ).all(eventId) as Availability[];
+    const participants = participantsResult.rows.map(p => ({
+      id: String(p.id),
+      event_id: String(p.event_id),
+      name: String(p.name),
+      joined_at: Number(p.joined_at),
+    }))
 
-    // Build availability map: date -> [participantId, ...]
-    const dateToParticipants: Record<string, string[]> = {};
-    for (const row of allAvailability) {
-      if (!dateToParticipants[row.date]) dateToParticipants[row.date] = [];
-      dateToParticipants[row.date].push(row.participant_id);
-    }
+    const allAvail = availResult.rows.map(a => ({
+      participant_id: String(a.participant_id),
+      date: String(a.date),
+    }))
 
-    // Build participant-keyed availability map for grid
-    const availability: Record<string, string[]> = {};
+    const availability: Record<string, string[]> = {}
     for (const p of participants) {
-      availability[p.id] = allAvailability
-        .filter(a => a.participant_id === p.id)
-        .map(a => a.date);
+      availability[p.id] = allAvail.filter(a => a.participant_id === p.id).map(a => a.date)
     }
 
-    const totalParticipants = participants.length;
+    const dateMap: Record<string, string[]> = {}
+    for (const a of allAvail) {
+      if (!dateMap[a.date]) dateMap[a.date] = []
+      dateMap[a.date].push(a.participant_id)
+    }
 
-    // Build overlaps sorted by count desc
-    const overlaps = Object.entries(dateToParticipants)
+    const totalParticipants = participants.length
+    const overlaps = Object.entries(dateMap)
       .map(([date, pIds]) => ({
         date,
         count: pIds.length,
         participants: pIds.map(pid => {
-          const p = participants.find(x => x.id === pid);
-          return p ? p.name : pid;
+          const p = participants.find(x => x.id === pid)
+          return p ? p.name : pid
         }),
-        isPerfectMatch: pIds.length === totalParticipants && totalParticipants > 0,
+        isPerfectMatch: totalParticipants > 0 && pIds.length === totalParticipants,
       }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => b.count - a.count)
 
-    return res.json({ participants, availability, overlaps, totalParticipants });
+    return res.json({ participants, availability, overlaps, totalParticipants })
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: '가용 날짜 조회 중 오류가 발생했습니다.' });
+    console.error('[GET /api/events/:eventId/availability]', err)
+    return res.status(500).json({ error: '가용 날짜 조회 중 오류가 발생했습니다.' })
   }
-});
+})
 
-// POST /api/events/:eventId/vote — Cast or change a vote
-router.post('/:eventId/vote', (req: Request, res: Response) => {
+// POST /api/events/:eventId/vote
+router.post('/:eventId/vote', async (req: Request, res: Response) => {
   try {
-    const { eventId } = req.params;
-    const { participantId, date } = req.body;
+    const { eventId } = req.params
+    const { participantId, date } = req.body
 
     if (!participantId || !date) {
-      return res.status(400).json({ error: '잘못된 요청입니다.' });
+      return res.status(400).json({ error: '잘못된 요청입니다.' })
     }
 
-    const participant = db.prepare(
-      'SELECT id FROM participants WHERE id = ? AND event_id = ?'
-    ).get(participantId, eventId);
-    if (!participant) {
-      return res.status(404).json({ error: '참여자를 찾을 수 없습니다.' });
+    const pCheck = await db.execute({
+      sql: 'SELECT id FROM participants WHERE id = ? AND event_id = ?',
+      args: [participantId, eventId],
+    })
+    if (pCheck.rows.length === 0) {
+      return res.status(404).json({ error: '참여자를 찾을 수 없습니다.' })
     }
 
-    // Upsert: delete old vote then insert new
-    db.prepare('DELETE FROM votes WHERE event_id = ? AND participant_id = ?')
-      .run(eventId, participantId);
-    db.prepare(`
-      INSERT INTO votes (id, event_id, participant_id, date) VALUES (?, ?, ?, ?)
-    `).run(nanoid(12), eventId, participantId, date);
+    await db.batch(
+      [
+        {
+          sql: 'DELETE FROM votes WHERE event_id = ? AND participant_id = ?',
+          args: [eventId, participantId],
+        },
+        {
+          sql: 'INSERT INTO votes (id, event_id, participant_id, date) VALUES (?, ?, ?, ?)',
+          args: [nanoid(12), eventId, participantId, date],
+        },
+      ],
+      'write'
+    )
 
-    return res.json({ success: true });
+    return res.json({ success: true })
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: '투표 중 오류가 발생했습니다.' });
+    console.error('[POST /api/events/:eventId/vote]', err)
+    return res.status(500).json({ error: '투표 중 오류가 발생했습니다.' })
   }
-});
+})
 
-// GET /api/events/:eventId/votes — Get vote counts per date
-router.get('/:eventId/votes', (req: Request, res: Response) => {
+// GET /api/events/:eventId/votes
+router.get('/:eventId/votes', async (req: Request, res: Response) => {
   try {
-    const { eventId } = req.params;
+    const { eventId } = req.params
 
-    const votes = db.prepare('SELECT * FROM votes WHERE event_id = ?').all(eventId) as Vote[];
-    const participants = db.prepare(
-      'SELECT * FROM participants WHERE event_id = ?'
-    ).all(eventId) as Participant[];
+    const [votesResult, participantsResult] = await Promise.all([
+      db.execute({ sql: 'SELECT * FROM votes WHERE event_id = ?', args: [eventId] }),
+      db.execute({ sql: 'SELECT id, name FROM participants WHERE event_id = ?', args: [eventId] }),
+    ])
 
-    // Group votes by date
-    const votesByDate: Record<string, { count: number; voters: string[] }> = {};
+    const participants = participantsResult.rows.map(p => ({
+      id: String(p.id),
+      name: String(p.name),
+    }))
+
+    const votes = votesResult.rows.map(v => ({
+      participant_id: String(v.participant_id),
+      date: String(v.date),
+    }))
+
+    const votesByDate: Record<string, { count: number; voters: string[] }> = {}
     for (const v of votes) {
-      if (!votesByDate[v.date]) votesByDate[v.date] = { count: 0, voters: [] };
-      votesByDate[v.date].count++;
-      const p = participants.find(x => x.id === v.participant_id);
-      votesByDate[v.date].voters.push(p ? p.name : v.participant_id);
+      if (!votesByDate[v.date]) votesByDate[v.date] = { count: 0, voters: [] }
+      votesByDate[v.date].count++
+      const p = participants.find(x => x.id === v.participant_id)
+      votesByDate[v.date].voters.push(p ? p.name : v.participant_id)
     }
 
-    // Map of participantId -> voted date
-    const myVotes: Record<string, string> = {};
+    const myVotes: Record<string, string> = {}
     for (const v of votes) {
-      myVotes[v.participant_id] = v.date;
+      myVotes[v.participant_id] = v.date
     }
 
-    return res.json({ votesByDate, myVotes });
+    return res.json({ votesByDate, myVotes })
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: '투표 결과 조회 중 오류가 발생했습니다.' });
+    console.error('[GET /api/events/:eventId/votes]', err)
+    return res.status(500).json({ error: '투표 결과 조회 중 오류가 발생했습니다.' })
   }
-});
+})
 
-export default router;
+export default router
