@@ -136,6 +136,12 @@ export default function Results() {
               {totalParticipants}명 참여 중 · 결과 보기
             </p>
           </div>
+          <button
+            onClick={() => navigate('/')}
+            className="shrink-0 border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-3 py-1.5 rounded-xl transition-colors"
+          >
+            🏠 새 일정
+          </button>
         </div>
       </header>
 

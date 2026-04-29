@@ -208,12 +208,20 @@ export default function EventRoom() {
               &nbsp;·&nbsp;주최자: {event.hostName}
             </p>
           </div>
-          <button
-            onClick={() => navigate(`/event/${eventId}/results`)}
-            className="shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
-          >
-            결과 보기
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => navigate('/')}
+              className="border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+            >
+              🏠
+            </button>
+            <button
+              onClick={() => navigate(`/event/${eventId}/results`)}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+            >
+              결과 보기
+            </button>
+          </div>
         </div>
       </header>
 
