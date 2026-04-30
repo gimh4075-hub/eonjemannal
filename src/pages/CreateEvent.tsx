@@ -1,19 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays } from 'date-fns'
-
-const STORAGE_KEY = 'eonjemannal_participants'
-
-function storeParticipant(eventId: string, info: { participantId: string; name: string }) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const map = raw ? JSON.parse(raw) : {}
-    map[eventId] = info
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
-  } catch {
-    // ignore
-  }
-}
+import { addHostedEvent, storeParticipant } from '../utils/storage'
 
 export default function CreateEvent() {
   const navigate = useNavigate()
@@ -78,6 +66,7 @@ export default function CreateEvent() {
       if (!joinRes.ok) throw new Error(joinData.error || '참여 등록에 실패했습니다.')
 
       storeParticipant(eventId, { participantId: joinData.participantId, name: joinData.name })
+      addHostedEvent({ eventId, title, createdAt: Date.now() })
 
       const link = `${window.location.origin}/event/${eventId}`
       setCreatedLink(link)
@@ -115,6 +104,12 @@ export default function CreateEvent() {
           </div>
           <h1 className="text-2xl font-bold text-slate-800">언제만날까</h1>
           <p className="text-slate-400 text-sm mt-1">모두가 가능한 날을 쉽게 찾아보세요</p>
+          <button
+            onClick={() => navigate('/my-events')}
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+          >
+            📋 내가 만든 이벤트 보기
+          </button>
         </div>
 
         {!createdLink ? (
