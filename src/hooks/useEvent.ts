@@ -128,6 +128,23 @@ export function useEvent(eventId: string | undefined) {
     [eventId, localParticipant, fetchAvailability]
   )
 
+  const updateEvent = useCallback(
+    async (updates: { title: string; description: string; dateRangeStart: string; dateRangeEnd: string }) => {
+      if (!eventId) throw new Error('이벤트 ID가 없습니다.')
+      const res = await fetch(`/api/events?id=${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '수정에 실패했습니다.')
+      }
+      await fetchEvent()
+    },
+    [eventId, fetchEvent]
+  )
+
   const castVote = useCallback(
     async (date: string) => {
       if (!eventId || !localParticipant) throw new Error('참여자 정보가 없습니다.')
@@ -156,6 +173,7 @@ export function useEvent(eventId: string | undefined) {
     joinEvent,
     submitAvailability,
     castVote,
+    updateEvent,
     refetchAvailability: fetchAvailability,
     refetchVotes: fetchVotes,
   }

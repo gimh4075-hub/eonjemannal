@@ -2,7 +2,7 @@ import { getDb, toStr, toNum, nanoid } from './_lib/db'
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
@@ -44,6 +44,21 @@ export default async function handler(req: any, res: any) {
           name: toStr(p.name), joinedAt: toNum(p.joined_at),
         })),
       })
+    }
+
+    if (req.method === 'PUT') {
+      const id = req.query?.id
+      if (!id) return res.status(400).json({ error: 'id 쿼리 파라미터가 필요합니다.' })
+
+      const { title, description, dateRangeStart, dateRangeEnd } = req.body ?? {}
+      if (!title || !dateRangeStart || !dateRangeEnd)
+        return res.status(400).json({ error: 'title, dateRangeStart, dateRangeEnd 가 필요합니다.' })
+
+      await execute(
+        'UPDATE events SET title=?, description=?, date_range_start=?, date_range_end=? WHERE id=?',
+        [title, description ?? null, dateRangeStart, dateRangeEnd, id]
+      )
+      return res.json({ success: true, id, title, description, dateRangeStart, dateRangeEnd })
     }
 
     if (req.method === 'DELETE') {

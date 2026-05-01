@@ -16,7 +16,7 @@ export function getHostedEvents(): HostedEvent[] {
 
 export function addHostedEvent(event: HostedEvent) {
   try {
-    const list = getHostedEvents()
+    const list = getHostedEvents().filter(e => e.eventId !== event.eventId)
     list.unshift(event)
     localStorage.setItem(HOSTED_KEY, JSON.stringify(list))
   } catch { /* ignore */ }
