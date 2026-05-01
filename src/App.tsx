@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import CreateEvent from './pages/CreateEvent'
 import EventRoom from './pages/EventRoom'
 import Results from './pages/Results'
 import MyEvents from './pages/MyEvents'
+import FeedbackButton from './components/FeedbackButton'
 
 export default function App() {
   return (
@@ -13,6 +15,8 @@ export default function App() {
         <Route path="/event/:eventId" element={<EventRoom />} />
         <Route path="/event/:eventId/results" element={<Results />} />
       </Routes>
+      <FeedbackButton />
+      <Analytics />
     </BrowserRouter>
   )
 }
