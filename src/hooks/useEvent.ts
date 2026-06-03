@@ -128,6 +128,26 @@ export function useEvent(eventId: string | undefined) {
     [eventId, localParticipant, fetchAvailability]
   )
 
+  const renameParticipant = useCallback(
+    async (name: string) => {
+      if (!eventId || !localParticipant) throw new Error('참여자 정보가 없습니다.')
+      const res = await fetch('/api/participants', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participantId: localParticipant.participantId, eventId, name }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '이름 변경에 실패했습니다.')
+      }
+      const updated: LocalParticipantInfo = { ...localParticipant, name }
+      storeParticipant(eventId, updated)
+      setLocalParticipant(updated)
+      await fetchEvent()
+    },
+    [eventId, localParticipant, fetchEvent]
+  )
+
   const leaveEvent = useCallback(
     async () => {
       if (!eventId || !localParticipant) throw new Error('참여자 정보가 없습니다.')
@@ -187,6 +207,7 @@ export function useEvent(eventId: string | undefined) {
     loading,
     error,
     joinEvent,
+    renameParticipant,
     leaveEvent,
     submitAvailability,
     castVote,

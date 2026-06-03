@@ -35,6 +35,7 @@ export default function EventRoom() {
     loading,
     error,
     joinEvent,
+    renameParticipant,
     leaveEvent,
     submitAvailability,
     updateEvent,
@@ -53,6 +54,11 @@ export default function EventRoom() {
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [leaveLoading, setLeaveLoading] = useState(false)
+
+  const [showRenameModal, setShowRenameModal] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameLoading, setRenameLoading] = useState(false)
+  const [renameError, setRenameError] = useState<string | null>(null)
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [editTitle, setEditTitle] = useState('')
@@ -117,6 +123,29 @@ export default function EventRoom() {
   }
 
   const isHost = !!event && !!localParticipant && localParticipant.name === event.hostName
+
+  function openRenameModal() {
+    setRenameValue(localParticipant?.name ?? '')
+    setRenameError(null)
+    setShowRenameModal(true)
+  }
+
+  async function handleRename(e: React.FormEvent) {
+    e.preventDefault()
+    if (!renameValue.trim()) { setRenameError('이름을 입력해주세요.'); return }
+    if (renameValue.trim() === localParticipant?.name) { setShowRenameModal(false); return }
+    setRenameLoading(true)
+    setRenameError(null)
+    try {
+      await renameParticipant(renameValue.trim())
+      setShowRenameModal(false)
+      addToast('이름이 변경됐어요! ✓', 'success')
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : '변경 중 오류가 발생했습니다.')
+    } finally {
+      setRenameLoading(false)
+    }
+  }
 
   async function handleLeave() {
     setLeaveLoading(true)
@@ -267,6 +296,43 @@ export default function EventRoom() {
         </div>
       )}
 
+      {/* Rename modal */}
+      {showRenameModal && (
+        <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold text-slate-800 mb-1">이름 변경</h2>
+            <p className="text-sm text-slate-400 mb-4">참여자 목록에 표시되는 이름을 바꿔요.</p>
+            <form onSubmit={handleRename} className="space-y-3">
+              <input
+                type="text"
+                value={renameValue}
+                onChange={e => setRenameValue(e.target.value)}
+                placeholder="새 이름 입력"
+                autoFocus
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+              />
+              {renameError && <p className="text-red-500 text-xs">{renameError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRenameModal(false)}
+                  className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium py-2.5 rounded-xl transition-colors text-sm"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={renameLoading}
+                  className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  {renameLoading ? <><Spinner />변경 중...</> : '변경하기'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Leave confirm modal */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
@@ -398,6 +464,14 @@ export default function EventRoom() {
                 className="border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
               >
                 ✏️ 수정
+              </button>
+            )}
+            {localParticipant && (
+              <button
+                onClick={openRenameModal}
+                className="border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+              >
+                👤 {localParticipant.name}
               </button>
             )}
             {localParticipant && !isHost && (
