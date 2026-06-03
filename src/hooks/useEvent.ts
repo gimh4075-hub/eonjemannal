@@ -128,6 +128,22 @@ export function useEvent(eventId: string | undefined) {
     [eventId, localParticipant, fetchAvailability]
   )
 
+  const leaveEvent = useCallback(
+    async () => {
+      if (!eventId || !localParticipant) throw new Error('참여자 정보가 없습니다.')
+      const res = await fetch('/api/participants', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participantId: localParticipant.participantId, eventId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '나가기에 실패했습니다.')
+      }
+    },
+    [eventId, localParticipant]
+  )
+
   const updateEvent = useCallback(
     async (updates: { title: string; description: string; dateRangeStart: string; dateRangeEnd: string }) => {
       if (!eventId) throw new Error('이벤트 ID가 없습니다.')
@@ -171,6 +187,7 @@ export function useEvent(eventId: string | undefined) {
     loading,
     error,
     joinEvent,
+    leaveEvent,
     submitAvailability,
     castVote,
     updateEvent,

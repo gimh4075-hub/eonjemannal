@@ -6,7 +6,7 @@ import { useEvent } from '../hooks/useEvent'
 import Calendar from '../components/Calendar'
 import ParticipantList from '../components/ParticipantList'
 import AvailabilityGrid from '../components/AvailabilityGrid'
-import { getHostedEvents, addHostedEvent } from '../utils/storage'
+import { getHostedEvents, addHostedEvent, removeStoredParticipant } from '../utils/storage'
 
 function Spinner() {
   return (
@@ -35,6 +35,7 @@ export default function EventRoom() {
     loading,
     error,
     joinEvent,
+    leaveEvent,
     submitAvailability,
     updateEvent,
     refetchAvailability,
@@ -49,6 +50,9 @@ export default function EventRoom() {
   const [saving, setSaving] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastId = useRef(0)
+
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [leaveLoading, setLeaveLoading] = useState(false)
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [editTitle, setEditTitle] = useState('')
@@ -113,6 +117,22 @@ export default function EventRoom() {
   }
 
   const isHost = !!event && !!localParticipant && localParticipant.name === event.hostName
+
+  async function handleLeave() {
+    setLeaveLoading(true)
+    try {
+      await leaveEvent()
+      if (eventId) removeStoredParticipant(eventId)
+      setShowLeaveConfirm(false)
+      // 참여자 정보 초기화 → join 모달이 다시 뜸
+      window.location.reload()
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : '나가기에 실패했습니다.', 'error')
+      setShowLeaveConfirm(false)
+    } finally {
+      setLeaveLoading(false)
+    }
+  }
 
   function openEditModal() {
     if (!event) return
@@ -247,6 +267,37 @@ export default function EventRoom() {
         </div>
       )}
 
+      {/* Leave confirm modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-3">🚪</div>
+              <h2 className="text-lg font-bold text-slate-800 mb-2">정말 나가시겠어요?</h2>
+              <p className="text-sm text-slate-500">
+                입력한 날짜 정보가 모두 삭제됩니다.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                disabled={leaveLoading}
+                className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium py-2.5 rounded-xl transition-colors text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleLeave}
+                disabled={leaveLoading}
+                className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                {leaveLoading ? <><Spinner />나가는 중...</> : '나가기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
@@ -347,6 +398,14 @@ export default function EventRoom() {
                 className="border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
               >
                 ✏️ 수정
+              </button>
+            )}
+            {localParticipant && !isHost && (
+              <button
+                onClick={() => setShowLeaveConfirm(true)}
+                className="border border-red-200 hover:bg-red-50 text-red-400 hover:text-red-500 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+              >
+                나가기
               </button>
             )}
             <button

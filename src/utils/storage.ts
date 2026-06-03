@@ -45,3 +45,13 @@ export function storeParticipant(eventId: string, info: { participantId: string;
     localStorage.setItem(PARTICIPANTS_KEY, JSON.stringify(map))
   } catch { /* ignore */ }
 }
+
+export function removeStoredParticipant(eventId: string) {
+  try {
+    const raw = localStorage.getItem(PARTICIPANTS_KEY)
+    if (!raw) return
+    const map = JSON.parse(raw) as Record<string, unknown>
+    delete map[eventId]
+    localStorage.setItem(PARTICIPANTS_KEY, JSON.stringify(map))
+  } catch { /* ignore */ }
+}
