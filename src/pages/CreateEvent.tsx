@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays } from 'date-fns'
 import { addHostedEvent, storeParticipant } from '../utils/storage'
+import NoticeBanner from '../components/NoticeBanner'
 
 export default function CreateEvent() {
   const navigate = useNavigate()
@@ -97,6 +98,8 @@ export default function CreateEvent() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
+        <NoticeBanner />
+
         {/* Logo / Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-500 rounded-2xl mb-3 shadow-lg">

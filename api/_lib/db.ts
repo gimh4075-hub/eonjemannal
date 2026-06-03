@@ -96,6 +96,11 @@ async function ensureSchema() {
       id TEXT PRIMARY KEY, category TEXT NOT NULL,
       message TEXT NOT NULL, contact TEXT,
       created_at INTEGER NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS notices (
+      id TEXT PRIMARY KEY, message TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'info',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL)`,
   ]
   for (const sql of stmts) await execute(sql)
 }
