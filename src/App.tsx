@@ -4,8 +4,7 @@ import CreateEvent from './pages/CreateEvent'
 import EventRoom from './pages/EventRoom'
 import Results from './pages/Results'
 import MyEvents from './pages/MyEvents'
-import FeedbackAdmin from './pages/FeedbackAdmin'
-import NoticesAdmin from './pages/NoticesAdmin'
+import Admin from './pages/Admin'
 import FeedbackButton from './components/FeedbackButton'
 
 export default function App() {
@@ -16,8 +15,7 @@ export default function App() {
         <Route path="/my-events" element={<MyEvents />} />
         <Route path="/event/:eventId" element={<EventRoom />} />
         <Route path="/event/:eventId/results" element={<Results />} />
-        <Route path="/admin/feedback" element={<FeedbackAdmin />} />
-        <Route path="/admin/notices" element={<NoticesAdmin />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
       <FeedbackButton />
       <Analytics />
