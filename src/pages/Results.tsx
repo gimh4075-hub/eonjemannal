@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
-import { ko } from 'date-fns/locale'
 import { useEvent } from '../hooks/useEvent'
 import VotingPanel from '../components/VotingPanel'
 import { DateOverlap } from '../types'
+import { useLang } from '../i18n'
 
 function Spinner() {
   return (
@@ -24,6 +24,7 @@ interface Toast {
 export default function Results() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
+  const { tr, locale } = useLang()
 
   const {
     event,
@@ -74,7 +75,7 @@ export default function Results() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <Spinner />
-          <span className="text-sm">결과 불러오는 중...</span>
+          <span className="text-sm">{tr.loadingResults}</span>
         </div>
       </div>
     )
@@ -85,13 +86,11 @@ export default function Results() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center max-w-sm">
           <div className="text-4xl mb-3">😢</div>
-          <h2 className="text-lg font-bold text-slate-700 mb-2">이벤트를 찾을 수 없어요</h2>
+          <h2 className="text-lg font-bold text-slate-700 mb-2">{tr.notFound}</h2>
           <p className="text-sm text-slate-400 mb-5">{error}</p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
-          >
-            홈으로 가기
+          <button onClick={() => navigate('/')}
+            className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors">
+            {tr.goHome}
           </button>
         </div>
       </div>
@@ -128,19 +127,19 @@ export default function Results() {
             onClick={() => navigate(`/event/${eventId}`)}
             className="text-slate-400 hover:text-slate-600 transition-colors p-1"
           >
-            ← 돌아가기
+            {tr.back}
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-base font-bold text-slate-800 truncate">{event.title}</h1>
             <p className="text-xs text-slate-400">
-              {totalParticipants}명 참여 중 · 결과 보기
+              {tr.participating(totalParticipants)}
             </p>
           </div>
           <button
             onClick={() => navigate('/')}
             className="shrink-0 border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-3 py-1.5 rounded-xl transition-colors"
           >
-            🏠 새 일정
+            {tr.newSchedule}
           </button>
         </div>
       </header>
@@ -150,10 +149,10 @@ export default function Results() {
         {hasPerfectMatch && (
           <section className="bg-green-50 border border-green-200 rounded-2xl p-5">
             <h2 className="text-base font-bold text-green-800 mb-3 flex items-center gap-2">
-              🏆 완벽한 날짜를 찾았어요!
+              {tr.perfectMatch}
             </h2>
             <p className="text-sm text-green-700 mb-4">
-              아래 날짜는 <strong>모든 {totalParticipants}명</strong>이 가능해요.
+              {tr.perfectMatchDesc(totalParticipants)}
             </p>
             <div className="grid sm:grid-cols-2 gap-2">
               {perfectMatches.map(d => (
@@ -164,9 +163,9 @@ export default function Results() {
                   <span className="text-2xl">✅</span>
                   <div>
                     <div className="font-bold text-green-700">
-                      {format(parseISO(d.date), 'yyyy년 M월 d일 (EEE)', { locale: ko })}
+                      {format(parseISO(d.date), tr.dateFormatFull, { locale })}
                     </div>
-                    <div className="text-xs text-green-600">{d.count}/{totalParticipants}명 가능</div>
+                    <div className="text-xs text-green-600">{tr.availableCount(d.count, totalParticipants)}</div>
                   </div>
                 </div>
               ))}
@@ -178,11 +177,11 @@ export default function Results() {
         {topDates.length > 0 && (
           <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-              📊 날짜별 가능 현황
+              {tr.dateAvailability}
             </h2>
             {overlaps.length === 0 ? (
               <p className="text-sm text-slate-400 text-center py-4">
-                아직 가능 날짜를 제출한 참여자가 없어요.
+                {tr.noSubmissions}
               </p>
             ) : (
               <div className="space-y-3">
@@ -203,12 +202,10 @@ export default function Results() {
         {overlaps.length === 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center text-slate-400">
             <div className="text-4xl mb-3">🙁</div>
-            <p className="text-sm">아직 아무도 가능 날짜를 제출하지 않았어요.</p>
-            <button
-              onClick={() => navigate(`/event/${eventId}`)}
-              className="mt-4 text-indigo-500 text-sm font-medium hover:underline"
-            >
-              이벤트 방으로 돌아가서 날짜 선택하기
+            <p className="text-sm">{tr.empty}</p>
+            <button onClick={() => navigate(`/event/${eventId}`)}
+              className="mt-4 text-indigo-500 text-sm font-medium hover:underline">
+              {tr.goBack}
             </button>
           </div>
         )}
@@ -236,6 +233,7 @@ interface DateBarProps {
 }
 
 function DateBar({ overlap, totalParticipants, rank }: DateBarProps) {
+  const { tr, locale } = useLang()
   const pct = totalParticipants > 0 ? Math.round((overlap.count / totalParticipants) * 100) : 0
   const isPerfect = overlap.isPerfectMatch
 
@@ -250,12 +248,12 @@ function DateBar({ overlap, totalParticipants, rank }: DateBarProps) {
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-slate-400 w-4">#{rank}</span>
           <span className={`font-semibold text-sm ${isPerfect ? 'text-green-700' : 'text-slate-700'}`}>
-            {format(parseISO(overlap.date), 'M월 d일 (EEE)', { locale: ko })}
+            {format(parseISO(overlap.date), tr.dateFormat, { locale })}
           </span>
-          {isPerfect && <span className="text-xs bg-green-200 text-green-700 px-1.5 py-0.5 rounded-full font-medium">전원 가능</span>}
+          {isPerfect && <span className="text-xs bg-green-200 text-green-700 px-1.5 py-0.5 rounded-full font-medium">{tr.allAvailable}</span>}
         </div>
         <span className="text-sm font-semibold text-slate-600">
-          {overlap.count}/{totalParticipants}명 ({pct}%)
+          {overlap.count}/{totalParticipants} ({pct}%)
         </span>
       </div>
 

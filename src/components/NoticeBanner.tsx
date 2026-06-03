@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLang } from '../i18n'
 
 interface Notice {
   id: string
@@ -7,13 +8,8 @@ interface Notice {
   createdAt: number
 }
 
-const TYPE_STYLE: Record<string, { bar: string; icon: string; label: string }> = {
-  update:  { bar: 'bg-indigo-50 border-indigo-200 text-indigo-800', icon: '🆕', label: '업데이트' },
-  info:    { bar: 'bg-blue-50 border-blue-200 text-blue-800',       icon: '📢', label: '공지'     },
-  warning: { bar: 'bg-amber-50 border-amber-200 text-amber-800',    icon: '⚠️', label: '안내'     },
-}
-
 export default function NoticeBanner() {
+  const { tr } = useLang()
   const [notices, setNotices] = useState<Notice[]>([])
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     try {
@@ -21,6 +17,12 @@ export default function NoticeBanner() {
       return new Set(raw ? JSON.parse(raw) : [])
     } catch { return new Set() }
   })
+
+  const TYPE_STYLE: Record<string, { bar: string; icon: string; label: string }> = {
+    update:  { bar: 'bg-indigo-50 border-indigo-200 text-indigo-800', icon: '🆕', label: tr.noticeUpdate },
+    info:    { bar: 'bg-blue-50 border-blue-200 text-blue-800',       icon: '📢', label: tr.noticeInfo },
+    warning: { bar: 'bg-amber-50 border-amber-200 text-amber-800',    icon: '⚠️', label: tr.noticeWarning },
+  }
 
   useEffect(() => {
     fetch('/api/notices')
@@ -45,21 +47,13 @@ export default function NoticeBanner() {
       {visible.map(n => {
         const style = TYPE_STYLE[n.type] ?? TYPE_STYLE.info
         return (
-          <div
-            key={n.id}
-            className={`flex items-start gap-3 border rounded-xl px-4 py-3 text-sm ${style.bar}`}
-          >
+          <div key={n.id} className={`flex items-start gap-3 border rounded-xl px-4 py-3 text-sm ${style.bar}`}>
             <span className="text-base leading-5 shrink-0">{style.icon}</span>
             <div className="flex-1 min-w-0">
               <span className="font-semibold mr-1.5">[{style.label}]</span>
               <span className="leading-relaxed">{n.message}</span>
             </div>
-            <button
-              onClick={() => dismiss(n.id)}
-              className="shrink-0 opacity-50 hover:opacity-100 transition-opacity text-base leading-none"
-            >
-              ×
-            </button>
+            <button onClick={() => dismiss(n.id)} className="shrink-0 opacity-50 hover:opacity-100 transition-opacity text-base leading-none">×</button>
           </div>
         )
       })}

@@ -1,4 +1,5 @@
 import { Participant } from '../types'
+import { useLang } from '../i18n'
 
 interface ParticipantListProps {
   participants: Participant[]
@@ -11,10 +12,12 @@ export default function ParticipantList({
   localParticipantId,
   availabilityMap = {},
 }: ParticipantListProps) {
+  const { tr } = useLang()
+
   if (participants.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 text-center text-slate-400 text-sm">
-        아직 아무도 참여하지 않았어요 🙁
+        {tr.noParticipants}
       </div>
     )
   }
@@ -22,7 +25,9 @@ export default function ParticipantList({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
       <h3 className="text-sm font-semibold text-slate-700 mb-3">
-        참여자 <span className="text-indigo-500">{participants.length}명</span>
+        {tr.participantsTitle(participants.length).split(String(participants.length)).map((part, i) =>
+          i === 0 ? <span key={i}>{part}<span className="text-indigo-500">{participants.length}</span></span> : <span key={i}>{part}</span>
+        )}
       </h3>
       <ul className="space-y-2">
         {participants.map(p => {
@@ -42,19 +47,17 @@ export default function ParticipantList({
                 <span className="text-sm text-slate-700 truncate">
                   {p.name}
                   {isMe && (
-                    <span className="ml-1 text-xs text-indigo-400 font-medium">(나)</span>
+                    <span className="ml-1 text-xs text-indigo-400 font-medium">{tr.me}</span>
                   )}
                 </span>
               </div>
               <span
                 className={[
                   'text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
-                  hasSubmitted
-                    ? 'bg-green-50 text-green-600'
-                    : 'bg-slate-50 text-slate-400',
+                  hasSubmitted ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400',
                 ].join(' ')}
               >
-                {hasSubmitted ? '제출 완료' : '미제출'}
+                {hasSubmitted ? tr.submitted : tr.notSubmitted}
               </span>
             </li>
           )

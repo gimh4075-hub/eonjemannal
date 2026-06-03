@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
-import { ko } from 'date-fns/locale'
 import { useEvent } from '../hooks/useEvent'
 import Calendar from '../components/Calendar'
 import ParticipantList from '../components/ParticipantList'
 import AvailabilityGrid from '../components/AvailabilityGrid'
 import { getHostedEvents, addHostedEvent, removeStoredParticipant } from '../utils/storage'
+import { useLang } from '../i18n'
 
 function Spinner() {
   return (
@@ -26,6 +26,7 @@ interface Toast {
 export default function EventRoom() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
+  const { tr, locale } = useLang()
 
   const {
     event,
@@ -107,7 +108,7 @@ export default function EventRoom() {
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault()
     if (!joinName.trim()) {
-      setJoinError('이름을 입력해주세요.')
+      setJoinError(tr.errName)
       return
     }
     setJoinLoading(true)
@@ -116,7 +117,7 @@ export default function EventRoom() {
       await joinEvent(joinName.trim())
       setShowJoinModal(false)
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setJoinError(err instanceof Error ? err.message : tr.checkLink)
     } finally {
       setJoinLoading(false)
     }
@@ -132,16 +133,16 @@ export default function EventRoom() {
 
   async function handleRename(e: React.FormEvent) {
     e.preventDefault()
-    if (!renameValue.trim()) { setRenameError('이름을 입력해주세요.'); return }
+    if (!renameValue.trim()) { setRenameError(tr.errName); return }
     if (renameValue.trim() === localParticipant?.name) { setShowRenameModal(false); return }
     setRenameLoading(true)
     setRenameError(null)
     try {
       await renameParticipant(renameValue.trim())
       setShowRenameModal(false)
-      addToast('이름이 변경됐어요! ✓', 'success')
+      addToast(tr.toastRenamed, 'success')
     } catch (err) {
-      setRenameError(err instanceof Error ? err.message : '변경 중 오류가 발생했습니다.')
+      setRenameError(err instanceof Error ? err.message : tr.checkLink)
     } finally {
       setRenameLoading(false)
     }
@@ -156,7 +157,7 @@ export default function EventRoom() {
       // 참여자 정보 초기화 → join 모달이 다시 뜸
       window.location.reload()
     } catch (err) {
-      addToast(err instanceof Error ? err.message : '나가기에 실패했습니다.', 'error')
+      addToast(err instanceof Error ? err.message : tr.checkLink, 'error')
       setShowLeaveConfirm(false)
     } finally {
       setLeaveLoading(false)
@@ -176,11 +177,11 @@ export default function EventRoom() {
   async function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault()
     setEditError(null)
-    if (!editTitle.trim()) { setEditError('이벤트 제목을 입력해주세요.'); return }
-    if (!editStart || !editEnd) { setEditError('날짜 범위를 선택해주세요.'); return }
-    if (editEnd < editStart) { setEditError('종료일은 시작일 이후여야 합니다.'); return }
+    if (!editTitle.trim()) { setEditError(tr.errTitleHost); return }
+    if (!editStart || !editEnd) { setEditError(tr.errDateRange); return }
+    if (editEnd < editStart) { setEditError(tr.errEndDate); return }
     const diff = (new Date(editEnd).getTime() - new Date(editStart).getTime()) / (1000 * 60 * 60 * 24)
-    if (diff > 60) { setEditError('날짜 범위는 최대 60일까지 설정할 수 있습니다.'); return }
+    if (diff > 60) { setEditError(tr.errMaxDays); return }
 
     setEditLoading(true)
     try {
@@ -193,9 +194,9 @@ export default function EventRoom() {
         }
       }
       setShowEditModal(false)
-      addToast('이벤트가 수정됐어요! ✓', 'success')
+      addToast(tr.toastEdited, 'success')
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : '수정 중 오류가 발생했습니다.')
+      setEditError(err instanceof Error ? err.message : tr.checkLink)
     } finally {
       setEditLoading(false)
     }
@@ -205,9 +206,9 @@ export default function EventRoom() {
     setSaving(true)
     try {
       await submitAvailability(selectedDates)
-      addToast('가능한 날짜가 저장됐어요! ✓', 'success')
+      addToast(tr.toastSaved, 'success')
     } catch (err) {
-      addToast(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.', 'error')
+      addToast(err instanceof Error ? err.message : tr.checkLink, 'error')
     } finally {
       setSaving(false)
     }
@@ -218,7 +219,7 @@ export default function EventRoom() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <Spinner />
-          <span className="text-sm">불러오는 중...</span>
+          <span className="text-sm">{tr.loading}</span>
         </div>
       </div>
     )
@@ -229,13 +230,12 @@ export default function EventRoom() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center max-w-sm">
           <div className="text-4xl mb-3">😢</div>
-          <h2 className="text-lg font-bold text-slate-700 mb-2">이벤트를 찾을 수 없어요</h2>
-          <p className="text-sm text-slate-400 mb-5">{error || '링크를 다시 확인해주세요.'}</p>
-          <button
-            onClick={() => navigate('/')}
+          <h2 className="text-lg font-bold text-slate-700 mb-2">{tr.notFound}</h2>
+          <p className="text-sm text-slate-400 mb-5">{error || tr.checkLink}</p>
+          <button onClick={() => navigate('/')}
             className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
           >
-            홈으로 가기
+            {tr.goHome}
           </button>
         </div>
       </div>
@@ -267,29 +267,19 @@ export default function EventRoom() {
       {showJoinModal && (
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-1">참여하기</h2>
+            <h2 className="text-lg font-bold text-slate-800 mb-1">{tr.join}</h2>
             <p className="text-sm text-slate-400 mb-4">
-              <span className="font-medium text-indigo-500">"{event.title}"</span> 에 참여합니다.
-              이름을 입력해주세요.
+              <span className="font-medium text-indigo-500">"{event.title}"</span>{tr.joinDesc}
             </p>
             <form onSubmit={handleJoin} className="space-y-3">
-              <input
-                type="text"
-                value={joinName}
-                onChange={e => setJoinName(e.target.value)}
-                placeholder="이름 입력"
-                autoFocus
+              <input type="text" value={joinName} onChange={e => setJoinName(e.target.value)}
+                placeholder={tr.namePlaceholder} autoFocus
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
               />
-              {joinError && (
-                <p className="text-red-500 text-xs">{joinError}</p>
-              )}
-              <button
-                type="submit"
-                disabled={joinLoading}
-                className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {joinLoading ? <><Spinner /> 참여 중...</> : '참여하기'}
+              {joinError && <p className="text-red-500 text-xs">{joinError}</p>}
+              <button type="submit" disabled={joinLoading}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                {joinLoading ? <><Spinner />{tr.joining}</> : tr.join}
               </button>
             </form>
           </div>
@@ -300,32 +290,22 @@ export default function EventRoom() {
       {showRenameModal && (
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-1">이름 변경</h2>
-            <p className="text-sm text-slate-400 mb-4">참여자 목록에 표시되는 이름을 바꿔요.</p>
+            <h2 className="text-lg font-bold text-slate-800 mb-1">{tr.rename}</h2>
+            <p className="text-sm text-slate-400 mb-4">{tr.renameDesc}</p>
             <form onSubmit={handleRename} className="space-y-3">
-              <input
-                type="text"
-                value={renameValue}
-                onChange={e => setRenameValue(e.target.value)}
-                placeholder="새 이름 입력"
-                autoFocus
+              <input type="text" value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                placeholder={tr.newNamePlaceholder} autoFocus
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
               />
               {renameError && <p className="text-red-500 text-xs">{renameError}</p>}
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRenameModal(false)}
-                  className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium py-2.5 rounded-xl transition-colors text-sm"
-                >
-                  취소
+                <button type="button" onClick={() => setShowRenameModal(false)}
+                  className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium py-2.5 rounded-xl transition-colors text-sm">
+                  {tr.cancel}
                 </button>
-                <button
-                  type="submit"
-                  disabled={renameLoading}
-                  className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-                >
-                  {renameLoading ? <><Spinner />변경 중...</> : '변경하기'}
+                <button type="submit" disabled={renameLoading}
+                  className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                  {renameLoading ? <><Spinner />{tr.renaming}</> : tr.doRename}
                 </button>
               </div>
             </form>
@@ -339,25 +319,17 @@ export default function EventRoom() {
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
             <div className="text-center mb-5">
               <div className="text-4xl mb-3">🚪</div>
-              <h2 className="text-lg font-bold text-slate-800 mb-2">정말 나가시겠어요?</h2>
-              <p className="text-sm text-slate-500">
-                입력한 날짜 정보가 모두 삭제됩니다.
-              </p>
+              <h2 className="text-lg font-bold text-slate-800 mb-2">{tr.leaveTitle}</h2>
+              <p className="text-sm text-slate-500">{tr.leaveDesc}</p>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowLeaveConfirm(false)}
-                disabled={leaveLoading}
-                className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium py-2.5 rounded-xl transition-colors text-sm"
-              >
-                취소
+              <button onClick={() => setShowLeaveConfirm(false)} disabled={leaveLoading}
+                className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium py-2.5 rounded-xl transition-colors text-sm">
+                {tr.cancel}
               </button>
-              <button
-                onClick={handleLeave}
-                disabled={leaveLoading}
-                className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                {leaveLoading ? <><Spinner />나가는 중...</> : '나가기'}
+              <button onClick={handleLeave} disabled={leaveLoading}
+                className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                {leaveLoading ? <><Spinner />{tr.leaving}</> : tr.leave}
               </button>
             </div>
           </div>
@@ -368,11 +340,11 @@ export default function EventRoom() {
       {showEditModal && (
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">이벤트 수정</h2>
+            <h2 className="text-lg font-bold text-slate-800 mb-4">{tr.editEvent}</h2>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  이벤트 제목 <span className="text-red-400">*</span>
+                  {tr.eventTitle} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -383,7 +355,7 @@ export default function EventRoom() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  설명 <span className="text-slate-400 font-normal">(선택)</span>
+                  {tr.description} <span className="text-slate-400 font-normal">{tr.optional}</span>
                 </label>
                 <textarea
                   value={editDescription}
@@ -394,8 +366,8 @@ export default function EventRoom() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  날짜 범위 <span className="text-red-400">*</span>
-                  <span className="text-slate-400 font-normal ml-1">(최대 60일)</span>
+                  {tr.dateRange} <span className="text-red-400">*</span>
+                  <span className="text-slate-400 font-normal ml-1">{tr.dateRangeLimit}</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -425,14 +397,11 @@ export default function EventRoom() {
                   onClick={() => setShowEditModal(false)}
                   className="flex-1 border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium py-2.5 rounded-xl transition-colors text-sm"
                 >
-                  취소
+                  {tr.cancel}
                 </button>
-                <button
-                  type="submit"
-                  disabled={editLoading}
-                  className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-                >
-                  {editLoading ? <><Spinner />저장 중...</> : '저장하기'}
+                <button type="submit" disabled={editLoading}
+                  className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                  {editLoading ? <><Spinner />{tr.saving}</> : tr.save}
                 </button>
               </div>
             </form>
@@ -446,9 +415,9 @@ export default function EventRoom() {
           <div className="min-w-0">
             <h1 className="text-base font-bold text-slate-800 truncate">{event.title}</h1>
             <p className="text-xs text-slate-400">
-              {format(parseISO(event.dateRangeStart), 'M월 d일', { locale: ko })} ~{' '}
-              {format(parseISO(event.dateRangeEnd), 'M월 d일', { locale: ko })}
-              &nbsp;·&nbsp;주최자: {event.hostName}
+              {format(parseISO(event.dateRangeStart), tr.shortDateFormat, { locale })} ~{' '}
+              {format(parseISO(event.dateRangeEnd), tr.shortDateFormat, { locale })}
+              &nbsp;·&nbsp;{tr.host}: {event.hostName}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -463,7 +432,7 @@ export default function EventRoom() {
                 onClick={openEditModal}
                 className="border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
               >
-                ✏️ 수정
+                {tr.edit}
               </button>
             )}
             {localParticipant && (
@@ -479,14 +448,14 @@ export default function EventRoom() {
                 onClick={() => setShowLeaveConfirm(true)}
                 className="border border-red-200 hover:bg-red-50 text-red-400 hover:text-red-500 text-sm font-medium px-3 py-2 rounded-xl transition-colors"
               >
-                나가기
+                {tr.leave}
               </button>
             )}
             <button
               onClick={() => navigate(`/event/${eventId}/results`)}
               className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
             >
-              결과 보기
+              {tr.viewResults}
             </button>
           </div>
         </div>
@@ -517,16 +486,16 @@ export default function EventRoom() {
               disabled={saving || !localParticipant}
               className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
-              {saving ? <><Spinner />저장 중...</> : `저장하기 (${selectedDates.length}일 선택)`}
+              {saving ? <><Spinner />{tr.saving}</> : tr.saveBtn(selectedDates.length)}
             </button>
             <button
               onClick={() => {
                 navigator.clipboard.writeText(shareUrl).catch(() => {})
-                addToast('링크가 복사됐어요!', 'success')
+                addToast(tr.toastLinkCopied, 'success')
               }}
               className="shrink-0 border border-slate-200 hover:bg-slate-50 text-slate-500 text-sm font-medium px-4 py-3 rounded-xl transition-colors"
             >
-              링크 복사
+              {tr.copyLink}
             </button>
           </div>
         </div>

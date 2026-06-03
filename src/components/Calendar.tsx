@@ -14,8 +14,8 @@ import {
   parseISO,
   isWithinInterval,
 } from 'date-fns'
-import { ko } from 'date-fns/locale'
 import { DateOverlap } from '../types'
+import { useLang } from '../i18n'
 
 interface CalendarProps {
   rangeStart: string
@@ -53,6 +53,7 @@ export default function Calendar({
   const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
   const days = eachDayOfInterval({ start: calStart, end: calEnd })
 
+  const { tr, locale } = useLang()
   const overlapMap = new Map(overlaps.map(o => [o.date, o]))
 
   function getDateStatus(date: Date) {
@@ -74,7 +75,7 @@ export default function Calendar({
     return { iso, inRange, inMonth, selected, overlap, ringClass }
   }
 
-  const weekDays = ['일', '월', '화', '수', '목', '금', '토']
+  const weekDays = tr.weekDays
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 select-none">
@@ -88,7 +89,7 @@ export default function Calendar({
           ‹
         </button>
         <h2 className="text-base font-semibold text-slate-800">
-          {format(currentMonth, 'yyyy년 M월', { locale: ko })}
+          {format(currentMonth, tr.monthFormat, { locale })}
         </h2>
         <button
           onClick={() => setCurrentMonth(m => addMonths(m, 1))}
@@ -150,16 +151,16 @@ export default function Calendar({
       {/* Legend */}
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 border-t border-slate-100 pt-3">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> 내가 선택
+          <span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> {tr.legendSelected}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full ring-2 ring-green-500 inline-block" /> 전원 가능
+          <span className="w-3 h-3 rounded-full ring-2 ring-green-500 inline-block" /> {tr.allAvailable}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full ring-2 ring-amber-400 inline-block" /> 일부 가능
+          <span className="w-3 h-3 rounded-full ring-2 ring-amber-400 inline-block" /> {tr.legendSomeAvail}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> 오늘
+          <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> {tr.legendToday}
         </span>
       </div>
     </div>

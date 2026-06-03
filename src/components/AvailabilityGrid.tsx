@@ -1,6 +1,6 @@
 import { format, parseISO, eachDayOfInterval } from 'date-fns'
-import { ko } from 'date-fns/locale'
 import { Participant, AvailabilityResult } from '../types'
+import { useLang } from '../i18n'
 
 interface AvailabilityGridProps {
   result: AvailabilityResult
@@ -9,6 +9,7 @@ interface AvailabilityGridProps {
 }
 
 export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: AvailabilityGridProps) {
+  const { tr, locale } = useLang()
   const { participants, availability, totalParticipants } = result
 
   const allDates = eachDayOfInterval({
@@ -16,7 +17,6 @@ export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: Avail
     end: parseISO(rangeEnd),
   }).map(d => format(d, 'yyyy-MM-dd'))
 
-  // Only show dates that have at least one person available
   const activeDates = allDates.filter(d =>
     participants.some(p => (availability[p.id] ?? []).includes(d))
   )
@@ -24,7 +24,7 @@ export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: Avail
   if (participants.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center text-slate-400">
-        아직 아무도 참여하지 않았어요 🙁
+        {tr.noParticipantsGrid}
       </div>
     )
   }
@@ -32,7 +32,7 @@ export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: Avail
   if (activeDates.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center text-slate-400">
-        아직 가능한 날짜를 선택한 참여자가 없어요.
+        {tr.noAvailability}
       </div>
     )
   }
@@ -47,12 +47,12 @@ export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: Avail
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 overflow-x-auto">
-      <h3 className="text-sm font-semibold text-slate-700 mb-3">참여자별 가능 날짜</h3>
+      <h3 className="text-sm font-semibold text-slate-700 mb-3">{tr.availabilityTitle}</h3>
       <table className="min-w-full text-xs border-collapse">
         <thead>
           <tr>
             <th className="text-left py-1.5 pr-3 font-medium text-slate-500 whitespace-nowrap min-w-[80px]">
-              이름
+              {tr.nameLabel}
             </th>
             {activeDates.map(date => (
               <th
@@ -62,9 +62,9 @@ export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: Avail
                   isPerfect(date) ? 'text-green-600' : 'text-slate-500',
                 ].join(' ')}
               >
-                <div>{format(parseISO(date), 'M/d', { locale: ko })}</div>
+                <div>{format(parseISO(date), 'M/d', { locale })}</div>
                 <div className="text-slate-400 font-normal">
-                  {format(parseISO(date), 'EEE', { locale: ko })}
+                  {format(parseISO(date), 'EEE', { locale })}
                 </div>
               </th>
             ))}
@@ -88,9 +88,8 @@ export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: Avail
               })}
             </tr>
           ))}
-          {/* Summary row */}
           <tr className="border-t-2 border-slate-200">
-            <td className="py-2 pr-3 font-semibold text-slate-600">합계</td>
+            <td className="py-2 pr-3 font-semibold text-slate-600">{tr.totalLabel}</td>
             {activeDates.map(date => {
               const count = getCount(date)
               const perfect = isPerfect(date)
@@ -99,10 +98,8 @@ export default function AvailabilityGrid({ result, rangeStart, rangeEnd }: Avail
                   <span
                     className={[
                       'text-xs font-semibold px-1.5 py-0.5 rounded-full',
-                      perfect
-                        ? 'bg-green-100 text-green-700'
-                        : count > 0
-                        ? 'bg-amber-50 text-amber-700'
+                      perfect ? 'bg-green-100 text-green-700'
+                        : count > 0 ? 'bg-amber-50 text-amber-700'
                         : 'text-slate-300',
                     ].join(' ')}
                   >

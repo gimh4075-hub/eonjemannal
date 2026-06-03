@@ -1,6 +1,6 @@
 import { format, parseISO } from 'date-fns'
-import { ko } from 'date-fns/locale'
 import { DateOverlap, VotesResult } from '../types'
+import { useLang } from '../i18n'
 
 interface VotingPanelProps {
   topDates: DateOverlap[]
@@ -12,24 +12,18 @@ interface VotingPanelProps {
 }
 
 export default function VotingPanel({
-  topDates,
-  votesResult,
-  totalParticipants,
-  localParticipantId,
-  onVote,
-  voting,
+  topDates, votesResult, totalParticipants, localParticipantId, onVote, voting,
 }: VotingPanelProps) {
+  const { tr, locale } = useLang()
   const votesByDate = votesResult?.votesByDate ?? {}
   const myVotes = votesResult?.myVotes ?? {}
-
   const myCurrentVote = localParticipantId ? myVotes[localParticipantId] : undefined
-
   const maxVotes = Math.max(...topDates.map(d => votesByDate[d.date]?.count ?? 0), 1)
 
   if (topDates.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center text-slate-400 text-sm">
-        투표할 날짜가 없습니다.
+        {tr.noVoteDates}
       </div>
     )
   }
@@ -37,9 +31,9 @@ export default function VotingPanel({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
       <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
-        🗳️ 날짜 투표
+        {tr.voteTitle}
       </h3>
-      <p className="text-xs text-slate-400 mb-4">원하는 날짜에 투표하세요. 투표는 변경할 수 있습니다.</p>
+      <p className="text-xs text-slate-400 mb-4">{tr.voteDesc}</p>
       <div className="space-y-3">
         {topDates.slice(0, 5).map(d => {
           const voteInfo = votesByDate[d.date]
@@ -60,17 +54,17 @@ export default function VotingPanel({
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  {isLeading && <span className="text-base" title="최다 득표">⭐</span>}
+                  {isLeading && <span className="text-base">⭐</span>}
                   <span className="font-semibold text-slate-700">
-                    {format(parseISO(d.date), 'M월 d일 (EEE)', { locale: ko })}
+                    {format(parseISO(d.date), tr.dateFormat, { locale })}
                   </span>
                   <span className="text-xs text-slate-400">
-                    가능 {d.count}/{totalParticipants}명
+                    {tr.availableCount(d.count, totalParticipants)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500 font-medium">
-                    {voteCount}표 ({pct}%)
+                    {tr.votesCount(voteCount, pct)}
                   </span>
                   <button
                     onClick={() => onVote(d.date)}
@@ -83,12 +77,11 @@ export default function VotingPanel({
                       voting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
                     ].join(' ')}
                   >
-                    {isMyVote ? '✓ 내 투표' : '투표하기'}
+                    {isMyVote ? tr.myVote : tr.vote}
                   </button>
                 </div>
               </div>
 
-              {/* Vote bar */}
               <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
                 <div
                   className="bg-indigo-400 h-1.5 rounded-full transition-all duration-500"
@@ -96,14 +89,10 @@ export default function VotingPanel({
                 />
               </div>
 
-              {/* Voters list */}
               {voters.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {voters.map(name => (
-                    <span
-                      key={name}
-                      className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full"
-                    >
+                    <span key={name} className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
                       {name}
                     </span>
                   ))}
@@ -113,7 +102,7 @@ export default function VotingPanel({
               {isLeading && voteCount > 0 && (
                 <div className="mt-1">
                   <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                    최다 득표일
+                    {tr.topVote}
                   </span>
                 </div>
               )}

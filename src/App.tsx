@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
+import { LangProvider } from './i18n'
+import LanguageSwitcher from './components/LanguageSwitcher'
 import CreateEvent from './pages/CreateEvent'
 import EventRoom from './pages/EventRoom'
 import Results from './pages/Results'
@@ -9,6 +11,7 @@ import FeedbackButton from './components/FeedbackButton'
 
 export default function App() {
   return (
+    <LangProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<CreateEvent />} />
@@ -18,7 +21,9 @@ export default function App() {
         <Route path="/admin" element={<Admin />} />
       </Routes>
       <FeedbackButton />
+      <LanguageSwitcher />
       <Analytics />
     </BrowserRouter>
+    </LangProvider>
   )
 }
