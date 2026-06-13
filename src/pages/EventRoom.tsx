@@ -268,14 +268,20 @@ export default function EventRoom() {
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold text-slate-800 mb-1">{tr.join}</h2>
-            <p className="text-sm text-slate-400 mb-4">
+            <p className="text-sm text-slate-400 mb-3">
               <span className="font-medium text-indigo-500">"{event.title}"</span>{tr.joinDesc}
             </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-700 mb-4 leading-relaxed">
+              {tr.joinNicknameNotice}
+            </div>
             <form onSubmit={handleJoin} className="space-y-3">
-              <input type="text" value={joinName} onChange={e => setJoinName(e.target.value)}
-                placeholder={tr.namePlaceholder} autoFocus
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
-              />
+              <div>
+                <input type="text" value={joinName} onChange={e => setJoinName(e.target.value)}
+                  placeholder={tr.namePlaceholder} autoFocus
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+                />
+                <p className="text-xs text-slate-400 mt-1.5 px-1">{tr.joinNicknameTip}</p>
+              </div>
               {joinError && <p className="text-red-500 text-xs">{joinError}</p>}
               <button type="submit" disabled={joinLoading}
                 className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
