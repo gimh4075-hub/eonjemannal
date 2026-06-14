@@ -191,9 +191,14 @@ export default function Calendar({
           <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> {tr.legendToday}
         </span>
         {showKorean && (
-          <span className="flex items-center gap-1">
-            <span className="text-red-400 font-medium text-xs">일</span> {tr.legendHoliday ?? '공휴일'}
-          </span>
+          <>
+            <span className="flex items-center gap-1">
+              <span className="text-red-500 font-semibold">7</span> {tr.legendHoliday}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-slate-400 text-[10px]">15</span> {tr.legendLunar}
+            </span>
+          </>
         )}
       </div>
     </div>

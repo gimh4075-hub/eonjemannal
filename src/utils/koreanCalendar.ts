@@ -1,6 +1,6 @@
 import { Solar } from 'lunar-javascript'
 
-// ── 고정 공휴일 (월-일) ─────────────────────────────────
+// ── 고정 양력 공휴일 (월-일) ────────────────────────────
 const FIXED: Record<string, string> = {
   '01-01': '신정',
   '03-01': '삼일절',
@@ -12,60 +12,74 @@ const FIXED: Record<string, string> = {
   '12-25': '성탄절',
 }
 
-// ── 변동 공휴일 (음력 기반, 2024-2028 태양력 환산) ──────
-const VARIABLE: Record<string, string> = {
-  // 2024
-  '2024-02-09': '설날 전날',
-  '2024-02-10': '설날',
-  '2024-02-11': '설날 다음날',
-  '2024-05-15': '부처님오신날',
-  '2024-09-16': '추석 전날',
-  '2024-09-17': '추석',
-  '2024-09-18': '추석 다음날',
-  // 2025
-  '2025-01-28': '설날 전날',
-  '2025-01-29': '설날',
-  '2025-01-30': '설날 다음날',
-  '2025-05-05': '부처님오신날',
-  '2025-05-06': '대체공휴일',   // 부처님오신날 == 어린이날
-  '2025-10-05': '추석 전날',
-  '2025-10-06': '추석',
-  '2025-10-07': '추석 다음날',
-  '2025-10-08': '대체공휴일',   // 추석연휴 일요일 겹침
-  // 2026
-  '2026-02-16': '설날 전날',
-  '2026-02-17': '설날',
-  '2026-02-18': '설날 다음날',
-  '2026-05-24': '부처님오신날',
-  '2026-09-24': '추석 전날',
-  '2026-09-25': '추석',
-  '2026-09-26': '추석 다음날',
-  // 2027
-  '2027-02-05': '설날 전날',
-  '2027-02-06': '설날',
-  '2027-02-07': '설날 다음날',
-  '2027-05-13': '부처님오신날',
-  '2027-09-14': '추석 전날',
-  '2027-09-15': '추석',
-  '2027-09-16': '추석 다음날',
-  // 2028
-  '2028-01-25': '설날 전날',
-  '2028-01-26': '설날',
-  '2028-01-27': '설날 다음날',
-  '2028-05-02': '부처님오신날',
-  '2028-10-02': '추석 전날',
-  '2028-10-03': '추석',
-  '2028-10-04': '추석 다음날',
+// ── 대체공휴일·선거일·임시공휴일 (자동 계산 불가, 직접 관리) ──
+const SPECIAL: Record<string, string> = {
+  // 대체공휴일
+  '2024-02-12': '대체휴일', // 설날 연휴(일요일 겹침)
+  '2024-05-06': '대체휴일', // 어린이날(일)
+  '2025-03-03': '대체휴일', // 삼일절(토)
+  '2025-05-06': '대체휴일', // 어린이날·부처님오신날 중복(월)
+  '2025-10-08': '대체휴일', // 추석 연휴(일요일 겹침)
+  '2026-03-02': '대체휴일', // 삼일절(일)
+  '2026-05-25': '대체휴일', // 부처님오신날(일)
+  '2026-08-17': '대체휴일', // 광복절(토)
+  '2026-10-05': '대체휴일', // 개천절(토)
+  '2027-02-08': '대체휴일', // 설날 연휴(일요일 겹침)
+  '2027-08-16': '대체휴일', // 광복절(일)
+  '2027-10-04': '대체휴일', // 개천절(일)
+  '2027-10-11': '대체휴일', // 한글날(토)
+  '2027-12-27': '대체휴일', // 성탄절(토)
+  // 임시공휴일
+  '2024-10-01': '임시휴일', // 국군의 날
+  '2025-01-27': '임시휴일', // 설 연휴
+  // 선거일
+  '2024-04-10': '선거일', // 제22대 국회의원선거
+  '2025-06-03': '선거일', // 제21대 대통령선거
+  '2026-06-03': '선거일', // 제9회 전국동시지방선거
+}
+
+function iso(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/** 양력 → 음력 (월/일). 윤달이면 month 가 음수. */
+function lunarMonthDay(date: Date): [number, number] {
+  const l = Solar.fromYmd(date.getFullYear(), date.getMonth() + 1, date.getDate()).getLunar()
+  return [l.getMonth(), l.getDay()]
+}
+
+/** 음력 기반 공휴일 (설날·추석·부처님오신날). 윤달(month<0)은 제외. */
+function lunarHoliday(date: Date): string | null {
+  const [m, d] = lunarMonthDay(date)
+  // 설날 (음력 1/1) 및 다음날
+  if (m === 1 && d === 1) return '설날'
+  if (m === 1 && d === 2) return '설연휴'
+  // 설날 전날 (= 다음 날이 음력 1/1 인 섣달그믐)
+  const next = new Date(date)
+  next.setDate(date.getDate() + 1)
+  const [nm, nd] = lunarMonthDay(next)
+  if (nm === 1 && nd === 1) return '설연휴'
+  // 부처님오신날 (음력 4/8)
+  if (m === 4 && d === 8) return '부처님'
+  // 추석 (음력 8/15) 및 전날·다음날
+  if (m === 8 && d === 14) return '추석연휴'
+  if (m === 8 && d === 15) return '추석'
+  if (m === 8 && d === 16) return '추석연휴'
+  return null
 }
 
 /** 해당 날짜의 한국 공휴일 이름. 공휴일이 아니면 null. */
 export function getHolidayName(date: Date): string | null {
-  const year = date.getFullYear()
+  const special = SPECIAL[iso(date)]
+  if (special) return special
   const mm = String(date.getMonth() + 1).padStart(2, '0')
   const dd = String(date.getDate()).padStart(2, '0')
-  const iso = `${year}-${mm}-${dd}`
-  const md = `${mm}-${dd}`
-  return VARIABLE[iso] ?? FIXED[md] ?? null
+  const fixed = FIXED[`${mm}-${dd}`]
+  if (fixed) return fixed
+  return lunarHoliday(date)
 }
 
 export interface LunarDate {
@@ -77,25 +91,16 @@ export interface LunarDate {
 /** 양력 → 음력 변환 */
 export function getLunarDate(date: Date): LunarDate | null {
   try {
-    const solar = Solar.fromYmd(
-      date.getFullYear(),
-      date.getMonth() + 1,
-      date.getDate(),
-    )
-    const lunar = solar.getLunar()
-    return {
-      month: lunar.getMonth(),
-      day: lunar.getDay(),
-      isLeap: lunar.isLeap(),
-    }
+    const [m, d] = lunarMonthDay(date)
+    return { month: Math.abs(m), day: d, isLeap: m < 0 }
   } catch {
     return null
   }
 }
 
-/** 음력 날짜 표시 문자열 */
+/** 음력 표시 라벨 — 1일엔 "월.1", 그 외엔 일자만 (윤달은 '윤' 접두) */
 export function lunarLabel(ld: LunarDate): string {
-  if (ld.day === 1) return ld.isLeap ? `윤${ld.month}/1` : `${ld.month}/초하루`
-  if (ld.day === 15 && !ld.isLeap) return `${ld.month}/보름`
-  return ld.isLeap ? `윤${ld.month}/${ld.day}` : `${ld.month}/${ld.day}`
+  const prefix = ld.isLeap ? '윤' : ''
+  if (ld.day === 1) return `${prefix}${ld.month}.1`
+  return `${prefix}${ld.day}`
 }
