@@ -186,10 +186,11 @@ function NoticesTab({ secret }: { secret: string }) {
           rows={3}
           className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition resize-none"
         />
+        <p className="text-xs text-slate-400">🌐 등록 시 영어·일본어·중국어로 자동 번역되어, 사용자의 언어에 맞게 표시됩니다.</p>
         {postError && <p className="text-red-500 text-xs">{postError}</p>}
         <button type="submit" disabled={posting}
           className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white font-semibold py-2.5 rounded-xl transition-colors">
-          {posting ? '등록 중...' : '공지 등록하기'}
+          {posting ? '등록·번역 중...' : '공지 등록하기'}
         </button>
       </form>
 

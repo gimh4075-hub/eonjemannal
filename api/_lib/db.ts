@@ -100,9 +100,17 @@ async function ensureSchema() {
       id TEXT PRIMARY KEY, message TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'info',
       active INTEGER NOT NULL DEFAULT 1,
-      created_at INTEGER NOT NULL)`,
+      created_at INTEGER NOT NULL,
+      translations TEXT)`,
   ]
   for (const sql of stmts) await execute(sql)
+
+  // 기존 notices 테이블에 translations 컬럼이 없으면 추가 (이미 있으면 에러 무시)
+  try {
+    await execute('ALTER TABLE notices ADD COLUMN translations TEXT')
+  } catch {
+    /* 컬럼이 이미 존재 */
+  }
 }
 
 export const toStr = (v: unknown) => (v == null ? '' : String(v))

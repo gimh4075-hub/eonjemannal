@@ -1,4 +1,5 @@
 import { getDb, toStr, toNum, nanoid } from './_lib/db'
+import { translateNotice } from './_lib/translate'
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -14,12 +15,21 @@ export default async function handler(req: any, res: any) {
       const result = await execute(
         'SELECT * FROM notices WHERE active=1 ORDER BY created_at DESC'
       )
-      const notices = result.rows.map(r => ({
-        id: toStr(r.id),
-        message: toStr(r.message),
-        type: toStr(r.type),
-        createdAt: toNum(r.created_at),
-      }))
+      const notices = result.rows.map(r => {
+        const message = toStr(r.message)
+        let translations: Record<string, string> | null = null
+        const raw = toStr(r.translations)
+        if (raw) {
+          try { translations = JSON.parse(raw) } catch { translations = null }
+        }
+        return {
+          id: toStr(r.id),
+          message,
+          translations: translations ?? { ko: message, en: message, ja: message, zh: message },
+          type: toStr(r.type),
+          createdAt: toNum(r.created_at),
+        }
+      })
       return res.json({ notices })
     }
 
@@ -34,12 +44,14 @@ export default async function handler(req: any, res: any) {
     if (req.method === 'POST') {
       const { message, type } = req.body ?? {}
       if (!message?.trim()) return res.status(400).json({ error: '내용을 입력해주세요.' })
+      const trimmed = message.trim()
       const id = nanoid()
+      const translations = await translateNotice(trimmed)
       await execute(
-        'INSERT INTO notices (id, message, type, active, created_at) VALUES (?,?,?,1,?)',
-        [id, message.trim(), type ?? 'info', Date.now()]
+        'INSERT INTO notices (id, message, type, active, created_at, translations) VALUES (?,?,?,1,?,?)',
+        [id, trimmed, type ?? 'info', Date.now(), JSON.stringify(translations)]
       )
-      return res.status(201).json({ success: true, id })
+      return res.status(201).json({ success: true, id, translations })
     }
 
     // DELETE — 공지 삭제 (비활성화)

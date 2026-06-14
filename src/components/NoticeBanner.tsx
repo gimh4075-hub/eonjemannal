@@ -4,12 +4,13 @@ import { useLang } from '../i18n'
 interface Notice {
   id: string
   message: string
+  translations?: Record<string, string>
   type: string
   createdAt: number
 }
 
 export default function NoticeBanner() {
-  const { tr } = useLang()
+  const { tr, lang } = useLang()
   const [notices, setNotices] = useState<Notice[]>([])
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     try {
@@ -51,7 +52,7 @@ export default function NoticeBanner() {
             <span className="text-base leading-5 shrink-0">{style.icon}</span>
             <div className="flex-1 min-w-0">
               <span className="font-semibold mr-1.5">[{style.label}]</span>
-              <span className="leading-relaxed">{n.message}</span>
+              <span className="leading-relaxed">{n.translations?.[lang] || n.message}</span>
             </div>
             <button onClick={() => dismiss(n.id)} className="shrink-0 opacity-50 hover:opacity-100 transition-opacity text-base leading-none">×</button>
           </div>
