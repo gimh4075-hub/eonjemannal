@@ -98,9 +98,8 @@ export function getLunarDate(date: Date): LunarDate | null {
   }
 }
 
-/** 음력 표시 라벨 — 1일엔 "월.1", 그 외엔 일자만 (윤달은 '윤' 접두) */
+/** 음력 표시 라벨 — 항상 "월.일" (윤달은 '윤' 접두) */
 export function lunarLabel(ld: LunarDate): string {
   const prefix = ld.isLeap ? '윤' : ''
-  if (ld.day === 1) return `${prefix}${ld.month}.1`
-  return `${prefix}${ld.day}`
+  return `${prefix}${ld.month}.${ld.day}`
 }

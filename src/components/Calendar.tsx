@@ -196,7 +196,7 @@ export default function Calendar({
               <span className="text-red-500 font-semibold">7</span> {tr.legendHoliday}
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-slate-400 text-[10px]">15</span> {tr.legendLunar}
+              <span className="text-slate-400 text-[10px]">5.1</span> {tr.legendLunar}
             </span>
           </>
         )}
